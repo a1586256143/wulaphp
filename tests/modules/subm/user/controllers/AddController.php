@@ -8,16 +8,12 @@
  * file that was distributed with this source code.
  */
 
-namespace testm\controllers;
+namespace subm\user\controllers;
 
 use wulaphp\mvc\controller\Controller;
 
-class TestController extends Controller {
-    public function add($i, $j = 1) {
-        return pview(['i' => $i, 'j' => $j]);
-    }
-
-    public function sub($x = 0, $y = 0) {
-        return ['result' => $x - $y];
+class AddController extends Controller {
+    public function addOp() {
+        return pview('~testm/views/test/add', ['i' => 2, 'j' => 8]);
     }
 }

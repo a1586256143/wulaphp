@@ -31,22 +31,11 @@ class DefaultDispatcher implements IURLDispatcher {
      * @throws \Exception
      */
     public function dispatch($url, $router, $parsedInfo) {
-        static $alias = false;
         //检测请求是否合法
         if ((!defined('URL_STRICT_MODE') || URL_STRICT_MODE) && $router->requestURI[ -1 ] == '/') {
             return null;
         }
-        if (defined('ALIAS_ENABLED') && ALIAS_ENABLED) {
-            $aliasFile = MODULES_PATH . 'alias.php';
-            if ($alias === false && is_file($aliasFile)) {
-                $alias = (array)include $aliasFile;
-            } else {
-                $alias = [];
-            }
-            if ($url && isset($alias[ $url ]) && $alias[ $url ]) {
-                $url = $alias[ $url ];
-            }
-        }
+
         $controllers = explode('/', $url);
         $pms         = [];
         $len         = count($controllers);
@@ -116,7 +105,7 @@ class DefaultDispatcher implements IURLDispatcher {
                 $app = self::findApp($module, $action, $pms, $namespace);
                 RtCache::add($ckey, $app);
             } else if (is_file($app[3])) {
-                include $app[3];
+                include_once $app[3];
             } else {
                 $app = self::findApp($module, $action, $pms, $namespace);
                 if ($app) {
@@ -173,8 +162,7 @@ class DefaultDispatcher implements IURLDispatcher {
                             }
                         }
                         if ($actionFound) {
-                            $ref = $clz->reflectionObj;
-
+                            $ref        = $clz->reflectionObj;
                             $method     = $ref->getMethod($action);
                             $methodSlag = Router::addSlash($method->getName());
                             if (!$method->isPublic() || $methodSlag != $actionSlag) {
@@ -216,7 +204,8 @@ class DefaultDispatcher implements IURLDispatcher {
                                     }
                                 }
                             }
-                            $view = $clz->{$action}(...$args);
+                            $router->urlParams = (array)$pms;
+                            $view              = $clz->{$action}(...$args);
                             if ($view !== null) {
                                 if (is_array($view)) {
                                     $view = new JsonView($view);
@@ -260,6 +249,9 @@ class DefaultDispatcher implements IURLDispatcher {
         if ($subnamespace) {
             $module    .= DS . $subnamespace;
             $namespace .= '\\' . $subnamespace;
+            $mclz      = null;
+        } else {
+            $mclz = App::getModuleByDir($module);
         }
         if ($action != 'index') {
             // Action Controller 的 index方法
@@ -282,7 +274,7 @@ class DefaultDispatcher implements IURLDispatcher {
             foreach ($files as $file) {
                 list ($controller_file, $controllerClz, $action, $controller) = $file;
                 if (is_file($controller_file)) {
-                    include $controller_file;
+                    include_once $controller_file;
                     if (is_subclass_of($controllerClz, 'wulaphp\mvc\controller\Controller')) {
                         if ($action == 'index' && count($params) > 0) {
                             $action = array_shift($params);
@@ -309,7 +301,7 @@ class DefaultDispatcher implements IURLDispatcher {
             $controller_file = MODULES_PATH . $module . DS . 'controllers' . DS . $controllerClz . '.php';
             $controllerClz   = $namespace . '\controllers\\' . $controllerClz;
             if (is_file($controller_file)) {
-                include $controller_file;
+                include_once $controller_file;
                 if (is_subclass_of($controllerClz, 'wulaphp\mvc\controller\Controller')) {
                     return [
                         $controllerClz,
@@ -328,7 +320,7 @@ class DefaultDispatcher implements IURLDispatcher {
             $controller_file = MODULES_PATH . $module . DS . 'Router.php';
             if (is_file($controller_file)) {
                 $controllerClz = $namespace . '\\Router';
-                include $controller_file;
+                include_once $controller_file;
                 if (is_subclass_of($controllerClz, 'wulaphp\mvc\controller\SubModuleRouter')) {
                     array_unshift($params, $action);
 
@@ -341,6 +333,17 @@ class DefaultDispatcher implements IURLDispatcher {
                         'index'
                     ];
                 }
+            } else if ($mclz && $mclz->hasSubModule()) {
+                array_unshift($params, $action);
+
+                return [
+                    'wulaphp\mvc\controller\SubModuleRouter',
+                    'index',
+                    $params,
+                    null,
+                    'index',
+                    'index'
+                ];
             }
         }
 

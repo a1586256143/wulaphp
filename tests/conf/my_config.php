@@ -9,10 +9,7 @@
  */
 
 return [
-    'test1' => 'test1 value',
-    'test2' => ['key1' => 'hello', 'key2' => ['1', '2']],
-    'test4' => 0,
-    'test5' => '',
-    'test6' => null,
-    'test7' => false
+    'test1' => 'my value',
+    'test2' => ['key1' => 'hello wula', 'key2' => ['2', '3']],
+    'test3' => 'test3 value'
 ];
